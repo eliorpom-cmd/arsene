@@ -5,7 +5,7 @@ Chrome/Safari speak length-prefixed JSON on stdin/stdout. Each message:
 and the reply echoes the id: {"id": n, "texts": [...]} / {"id": n, "spans": [...]} /
 {"id": n, "people": count} (toolbar popup) / {"id": n, "review": {...}} or {"id": n, "error": "..."}.
 "review" (texts[0]) returns what is masked and the doubtful passages left in clear, with real
-values, for the review before sending; "decide" (mask [[value, type]], unmask [value]) keeps
+values, for the review before sending; "decide" (mask [[value, type]], unmask [value], forget [value]) keeps
 the user's choices in the dossier's table. "file" (name, data in base64) does the review of
 an attached file: {"file": {..., "original", "name", "notes", "layout"?}} or {"file": {"unreadable": true,
 "why", "reason"}}. "protect" (name, data) gives the protected Word file itself: {"file": {"name", "data"}}.
@@ -23,12 +23,10 @@ so the table stays on the Mac and is shared with the rest of Arsène.
 import json, pathlib, re, struct, sys
 
 HERE = pathlib.Path(__file__).resolve().parent
+# install.sh puts src/ and this host side by side in ~/Library/Application Support, outside
+# ~/Documents: Chrome launches hosts as their own process, which macOS refuses ~/Documents.
 SRC = HERE.parents[1] / "src"
-# Installed copy (install.sh): hook.py sits next to this file, outside ~/Documents. Chrome
-# launches hosts as their own responsible process, so macOS refuses them ~/Documents even
-# when Chrome itself has access: that copy cannot start the engine, it must already run.
-INSTALLED = (HERE / "hook.py").exists()
-sys.path.insert(0, str(HERE if INSTALLED else SRC))
+sys.path.insert(0, str(SRC))
 import hook  # noqa: E402  (engine client)
 STOPPED = "Arsène ne démarre pas : voir engine.log"
 
@@ -36,7 +34,7 @@ STOPPED = "Arsène ne démarre pas : voir engine.log"
 def engine(req):
     # installed by install.sh outside ~/Documents: the host starts the engine itself
     try:
-        return hook.call(req, start=not INSTALLED)
+        return hook.call(req)
     except (FileNotFoundError, ConnectionRefusedError):
         raise RuntimeError(STOPPED)
     except TimeoutError:
@@ -74,14 +72,10 @@ def main():
         pass
     while (msg := read()) is not None:
         try:
-            if msg.get("op") not in ("pseudonymize", "spans", "people", "review", "decide", "file", "protect", "realname", "download", "ping", "build"):
+            if msg.get("op") not in ("pseudonymize", "spans", "people", "review", "decide", "file", "protect", "realname", "download", "ping"):
                 raise ValueError("opération refusée")
             if msg["op"] == "ping":
                 write({"id": msg.get("id"), "ok": True})
-                continue
-            if msg["op"] == "build":           # dev only: extension/dev-reload.sh bumps it
-                f = hook.HOME / "dev-build"
-                write({"id": msg.get("id"), "build": f.read_text().strip() if f.exists() else ""})
                 continue
             if msg["op"] == "people":          # how many people the dossier protects, never who
                 table = engine({"op": "dump", "root": root(msg.get("dossier"))})["table"]
@@ -119,7 +113,8 @@ def main():
                 continue
             if msg["op"] == "decide":
                 engine({"op": "decide", "root": root(msg.get("dossier")),
-                        "mask": [[str(v), str(t)] for v, t in msg.get("mask", [])], "unmask": [str(v) for v in msg.get("unmask", [])]})
+                        "mask": [[str(v), str(t)] for v, t in msg.get("mask", [])], "unmask": [str(v) for v in msg.get("unmask", [])],
+                        "forget": [str(v) for v in msg.get("forget", [])]})
                 write({"id": msg.get("id"), "ok": True})
                 continue
             req = {"root": root(msg.get("dossier")), "texts": msg["texts"]}

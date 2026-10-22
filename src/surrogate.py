@@ -215,8 +215,12 @@ class Vault:
         v.rng.setstate((st[0], tuple(st[1]), st[2]))
         return v
 
-    def decide(self, mask=(), unmask=()):
-        """Review decisions: mask [(value, type)] too, never mask [value] again."""
+    def decide(self, mask=(), unmask=(), forget=()):
+        """Review decisions: mask [(value, type)] too, never mask [value] again,
+        forget [value]: undecided again (a review closed without sending)."""
+        for val in forget:
+            self.forced = [f for f in self.forced if fold(f[1]) != fold(val.strip())]
+            self.allowed.discard(fold(val.strip()))
         for val, lbl in mask:
             self.allowed.discard(fold(val.strip()))
             if [lbl, val.strip()] not in self.forced:
@@ -569,7 +573,8 @@ def pseudonymize(text, vault, context="", only=None, spans=None):
     # a forced value kept inside a bigger surrogate (the city of an address): the user's
     # decision wins, it becomes a token there too
     for lbl, val in vault.forced:
-        out = re.sub(rf"(?<![\w@]){_loose_fold(fold(val)).replace(' ', r'\s+')}(?![\w@])",
+        # re.escape turned each space into "\ ": that is what becomes \s+
+        out = re.sub(rf"(?<![\w@]){_loose_fold(fold(val)).replace(chr(92) + ' ', r'\s+')}(?![\w@])",
                      lambda m, l=lbl: vault.token(l, m.group()), out, flags=re.I)
     return out
 

@@ -251,6 +251,27 @@
   const findComposer = () => document.querySelector('#prompt-textarea, form textarea, form [contenteditable="true"], [contenteditable="true"]');
   const valueOf = (ed) => ed.tagName === "TEXTAREA" ? ed.value : ed.innerText;
   const isSend = (b) => /envoyer|send/i.test(`${b.getAttribute("aria-label") || ""} ${b.dataset.testid || ""}`);
+  const FIELDS = 'textarea, [contenteditable="true"]';
+  // The send button of this field: the nearest one, in an ancestor holding no other field.
+  // The first one of the page could belong to the main composer while the user edits an
+  // older message, and clicking it would send the main draft unchecked.
+  function sendButtonOf(ed) {
+    for (let n = ed.parentElement; n && n !== document.documentElement; n = n.parentElement) {
+      if ([...n.querySelectorAll(FIELDS)].some((f) => f !== ed && !f.contains(ed) && !ed.contains(f))) return null;
+      const b = [...n.querySelectorAll("button")].find(isSend);
+      if (b) return b;
+    }
+    return null;
+  }
+  // The field a send button sends: the nearest one, by the same rule.
+  function fieldOf(b) {
+    for (let n = b.parentElement; n && n !== document.documentElement; n = n.parentElement) {
+      const fields = [...n.querySelectorAll(FIELDS)].filter((f) => !f.parentElement?.closest(FIELDS));
+      if (fields.length === 1) return fields[0];
+      if (fields.length > 1) return null;
+    }
+    return null;
+  }
 
   function replaceAll(ed, text) {
     ed.focus();
@@ -522,6 +543,7 @@
     const go = el("button", "go", st.kind === "file" ? "Joindre la version protégée" : st.kind === "attached" ? "Fermer" : "Envoyer la version protégée");
     go.addEventListener("click", () => {
       const t = st.review.text;
+      st.kept = true;                              // the choices stand: closeSheet keeps them
       if (st.kind === "file") st.done(t);          // before closeSheet, which would answer "cancelled"
       closeSheet();
       if (st.kind === "send" || st.kind === "look") sendProtected(st.ed, t);
@@ -539,7 +561,13 @@
     else sheet.classList.add("on");
     place();
   }
-  function closeSheet() { const st = sheet?.state; sheet?.remove(); sheet = null; st?.done?.(null); }
+  // Doubts are masked before the sheet shows (the safe side while it is open). Closed without
+  // sending, nothing was decided: they go back to undecided, to be asked again next time.
+  function closeSheet() {
+    const st = sheet?.state; sheet?.remove(); sheet = null;
+    if (st && !st.kept && st.rows?.length) ask("decide", [], { forget: st.rows.map((d) => d.value) });
+    st?.done?.(null);
+  }
   // Every listener below acts only on events the user made (isTrusted). The site's own JS can
   // dispatch a fake copy, paste, drop or Enter: answering it would hand the site the real names
   // (realOf in its DataTransfer) or let it test candidate names. Arsène's own replays are
@@ -705,7 +733,13 @@
     return { on, aiView, people: list };
   }
   // The field empties after sending, or the user edits it: keep the chip true.
-  setInterval(() => { if (chipEd && chip?.classList.contains("on") && chipItems.length) updateChip(chipEd, false); }, 1000);
+  // Checked every second, asked again only when the text changed.
+  let chipText = null;
+  setInterval(() => {
+    if (!chipEd || !chip?.classList.contains("on") || !chipItems.length) return;
+    const text = valueOf(chipEd);
+    if (text !== chipText) { chipText = text; updateChip(chipEd, false); }
+  }, 1000);
 
   // Paste into the chat: the protected version is pasted instead.
   addEventListener("paste", async (e) => {
@@ -750,7 +784,7 @@
     }
     passing = true;
     try {
-      const b = [...document.querySelectorAll("button")].find(isSend);
+      const b = sendButtonOf(ed);
       if (b) b.click();
       else ed.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true }));
     } finally { passing = false; }
@@ -758,14 +792,15 @@
   addEventListener("keydown", (e) => {
     if (!e.isTrusted || !on || passing || e.key !== "Enter" || e.shiftKey || e.isComposing) return;
     const ed = composerOf(e.target);
-    if (!ed) return;
+    // a field with no send button of its own (settings, instructions): Enter stays a new line
+    if (!ed || (ed !== findComposer() && !sendButtonOf(ed))) return;
     e.preventDefault(); e.stopImmediatePropagation();
     protectThenSend(ed);
   }, true);
   addEventListener("click", (e) => {
     const b = e.target.closest?.("button");
     if (!e.isTrusted || !on || passing || !b || !isSend(b)) return;
-    const ed = findComposer();
+    const ed = fieldOf(b) || findComposer();
     if (!ed) return;
     e.preventDefault(); e.stopImmediatePropagation();
     protectThenSend(ed);

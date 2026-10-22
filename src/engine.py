@@ -15,7 +15,7 @@ root (the folder that holds `.pseudo/`); its table lives in `.pseudo/vault.bin`,
     {"op": "protect_file", "root": "/path", "name": "x.docx", "data": base64} -> {"text", "name"} + {"data": base64} for Word (layout kept)
     {"op": "restore_file", "root": "/path", "name": "x.docx", "data": base64} -> {"text", "name", "restored": n} (+ "data" for Word) or {"unreadable": true}
     {"op": "restore_path", "root": "/path", "path": "/abs/file"}     -> {"restored": n, "kind"} (file rewritten in place) or {"restored": 0, "skipped": why}
-    {"op": "decide",       "root": "/path", "mask": [[v, type]], "unmask": [v]}
+    {"op": "decide",       "root": "/path", "mask": [[v, type]], "unmask": [v], "forget": [v]}
     {"op": "notice",       "root": "/path", "path": "/file"}          -> {"doubts": n}  (once per file version)
     {"op": "gate",         "root": "/path", "path": "/file"}          -> {"pending": n} (doubts not reviewed yet)
     {"op": "dump",         "root": "/path"}                         -> {"table": {...}}
@@ -42,13 +42,20 @@ MAX_INDEX = 20_000_000
 formats.TMP = HOME / "tmp"                              # textutil's private folder (macOS fallback only)
 
 
+# formats.read fills the module-level formats.notes: one read at a time, so the indexing
+# thread cannot clear the notes of a file attached in the browser meanwhile
+READ_LOCK = threading.Lock()
+
+
 def extract(path):
     """Plain text of a document, or "" when it is not read (images, scans, unknown formats).
     Every format is read by formats.py, in Python, on any system."""
     try:
-        return formats.read(path.name, path.read_bytes())[0]
+        data = path.read_bytes()
     except OSError:
         return ""
+    with READ_LOCK:
+        return formats.read(path.name, data)[0]
 
 
 def extract_bytes(name, data):
@@ -60,8 +67,10 @@ def extract_why(name, data):
     """(text, why, notes) of an attached file: why says why it was not read (formats.REASONS),
     notes what the copy leaves out (PDF pages with no text)."""
     import base64
-    text, why = formats.read(name, base64.b64decode(data))
-    return text, why, list(formats.notes)
+    data = base64.b64decode(data)
+    with READ_LOCK:
+        text, why = formats.read(name, data)
+        return text, why, list(formats.notes)
 
 
 RESTORE_MAX = 50_000_000
@@ -276,7 +285,14 @@ class Engine:
             else:
                 return {"restored": 0, "skipped": "format"}
             n, kind = len(self._spans(text, vault)), "text"
-            new = self._rehydrate(text, vault).encode(enc) if n else raw
+            if n:
+                text = self._rehydrate(text, vault)
+                try:
+                    new = text.encode(enc)
+                except UnicodeEncodeError:          # a real name cp1252 cannot write ("Łukasz")
+                    new = text.encode("utf-8")
+            else:
+                new = raw
         else:
             return {"restored": 0, "skipped": "format"}
         if not n or new == raw:
@@ -377,7 +393,7 @@ class Engine:
         if op == "restore_path":                         # a file downloaded from the chat
             return self.restore_path(req["path"], vault)
         if op == "decide":
-            vault.decide(req.get("mask", []), req.get("unmask", []))
+            vault.decide(req.get("mask", []), req.get("unmask", []), req.get("forget", []))
             self.save(root, vault)
             return {"forced": len(vault.forced), "allowed": len(vault.allowed)}
         if op in ("notice", "gate") and req["path"] in self.state(root)["clean"]:

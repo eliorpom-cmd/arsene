@@ -193,8 +193,9 @@ def pre_tool(d, root):
 
 
 # commands that only read: a rehydrated one needs no more consent than the original
+# (not awk, sort or plain sed: system(), -o and the w/e commands run or write things)
 READ_ONLY = {"ls", "cat", "head", "tail", "grep", "egrep", "fgrep", "rg", "find", "wc", "textutil",
-             "sed", "awk", "sort", "uniq", "cut", "file", "stat", "diff", "echo", "printf", "tr", "nl",
+             "uniq", "cut", "file", "stat", "diff", "echo", "printf", "tr", "nl",
              "pwd", "basename", "dirname", "realpath", "column", "jq", "mdls", "pdftotext", "true", "cd"}
 EDITORS = {"sed", "perl"}
 
@@ -208,9 +209,11 @@ def _shell_decision(cmd, mode, root, cwd):
     """allow: every piece only reads, or edits files of the dossier in a mode that accepts
     edits; anything else (redirections outside, deletions, installs, scripts) is asked."""
     edits_ok = mode in ("acceptEdits", "auto")
-    if re.search(r"`|\$\(|<\(|\beval\b|\bxargs\b", cmd):
+    # substitutions, subshells, groups and "&>" hide what really runs: always asked
+    if re.search(r"`|\$\(|<\(|>\(|[(){}]|&>|\beval\b|\bxargs\b", cmd):
         return "ask"
-    for piece in re.split(r"&&|\|\||;|\||\n", cmd):
+    # "2>&1" is a redirection, not a background "&": drop it before splitting on "&"
+    for piece in re.split(r"&&|\|\||;|\||&|\n", re.sub(r"\d?>&\d", "", cmd)):
         words = piece.strip().split()
         if not words:
             continue
@@ -218,11 +221,16 @@ def _shell_decision(cmd, mode, root, cwd):
         for target in re.findall(r"(?<![0-9&])>>?\s*([^\s;&|]+)", piece):
             if target != "/dev/null" and not (edits_ok and _within(pathlib.Path(cwd, target), root)):
                 return "ask"
-        if prog == "find" and re.search(r"-(exec|execdir|delete|ok)\b", piece):
+        if prog == "find" and re.search(r"-(exec|execdir|delete|ok|okdir|fprint0?|fprintf|fls)\b", piece):
+            return "ask"
+        if prog == "rg" and re.search(r"--pre\b", piece):
             return "ask"
         if prog == "textutil" and "-stdout" not in words:
             if not edits_ok:
                 return "ask"
+        # sed that only prints lines ("sed -n '1,40p' file"): no w or e command can hide in it
+        if prog == "sed" and re.fullmatch(r"""sed\s+-n\s+(['"]?)\d+(,(\d+|\$))?p\1(\s+[^\s-]\S*)*""", piece.strip()):
+            continue
         if prog in EDITORS and re.search(r"\s-[a-zA-Z]*i", piece):
             if not edits_ok:
                 return "ask"
@@ -306,8 +314,14 @@ def prompt(d, root):
              "Pseudonymiseur : une mention @fichier envoie le fichier en clair (sans passer par les outils). "
              f"Écrivez plutôt « lis {refs[0]} » : la lecture sera protégée."})
     try:
-        # a document added during the session: index it now (only new or changed files are read)
-        call({"op": "index", "root": root})
+        # a document added during the session: index it first (only new or changed files are
+        # read). A big dossier could outlast the hook's timeout, and a timed-out hook lets the
+        # prompt go unchecked: so the check never waits longer than 60 s for it.
+        # Waited for 60 s at most, then the engine goes on alone (it indexes piece by piece).
+        import threading
+        t = threading.Thread(target=call, args=({"op": "index", "root": root},), daemon=True)
+        t.start()
+        t.join(60)
         r = call({"op": "check_prompt", "root": root, "text": text})
     except Exception as e:
         out({"decision": "block", "hookSpecificOutput": TITLE, "reason": f"Pseudonymiseur : moteur indisponible ({e}), message retenu."})

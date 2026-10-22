@@ -93,19 +93,3 @@ chrome.downloads.onChanged.addListener(async (delta) => {
   tabs.sort((a, b) => (b.active - a.active) || (b.lastAccessed - a.lastAccessed));
   if (tabs[0]) chrome.tabs.sendMessage(tabs[0].id, { op: "toast", text }).catch(() => {});
 });
-
-// Development only (unpacked extension, no update_url): reload itself when
-// extension/dev-reload.sh bumps the build stamp, so code changes need no click.
-if (!chrome.runtime.getManifest().update_url) {
-  let seen = null;
-  setInterval(() => {
-    if (!port) connect();
-    const id = next++;
-    waiting.set(id, (r) => {
-      if (r.build === undefined) return;
-      if (seen === null) seen = r.build;
-      else if (r.build !== seen) chrome.runtime.reload();
-    });
-    port.postMessage({ id, op: "build" });
-  }, 2000);
-}

@@ -11,6 +11,8 @@ BASE="$HOME/Library/Application Support/Pseudonymiseur"
 RUN="$BASE/engine"
 ID="bholbhhgcfnogmjkdjmnbdjkabpjglip"   # fixed by the "key" in extension/chrome/manifest.json
 MODEL="knowledgator/gliner-pii-edge-v1.0"
+# a fixed revision: a later change on Hugging Face never reaches an installed engine unreviewed
+REVISION="9b7f39b0a2da971a5beea78d35f1539d4009c891"
 
 [ "$(uname)" = Darwin ] || { echo "Arsène runs on macOS only."; exit 1; }
 mkdir -p "$RUN"
@@ -35,7 +37,8 @@ else
 fi
 
 echo "Downloading the detection model ($MODEL)…"
-HF_HUB_DISABLE_PROGRESS_BARS=1 "$PY" -c "from huggingface_hub import snapshot_download; snapshot_download('$MODEL')" >/dev/null
+MODEL_DIR="$(HF_HUB_DISABLE_PROGRESS_BARS=1 "$PY" -c "from huggingface_hub import snapshot_download; print(snapshot_download('$MODEL', revision='$REVISION'))" 2>/dev/null)"
+[ -d "$MODEL_DIR" ] || { echo "The model could not be downloaded."; exit 1; }
 
 # Stop an engine still running the previous code, then copy the new one
 [ -f "$RUN/src/pseudo.py" ] && "$PY" "$RUN/src/pseudo.py" stop >/dev/null 2>&1 || true
@@ -48,6 +51,7 @@ cat > "$RUN/extension/host/arsene-host" <<SH
 #!/bin/sh
 # Launched by the browser. Errors go to host.log (the browser shows only "host has exited").
 cd "\$(dirname "\$0")"
+export GLINER_MODEL="$MODEL_DIR"
 exec "$PY" -B arsene_host.py "\$@" 2>>"$BASE/host.log"
 SH
 chmod +x "$RUN/extension/host/arsene-host"
