@@ -43,8 +43,8 @@ RULES = [
                          r"chemin|route|place|all[ée]e|impasse|quai|cours|voie|square|villa|"
                          r"faubourg|passage|sentier|contour|quartier|lieu-dit|"
                          r"hameau|r[ée]sidence|zone|mail|esplanade|parc)\s+"
-                         r"(?:[^\n;]{2,60}?\s*\d{5}\s+[A-ZÉÈÀÂÎÔÛ][A-Za-zÀ-ÿ'’\-]*"
-                         r"(?:[ ][A-Za-zÀ-ÿ'’\-]+){0,3}"
+                         r"(?:[^\n;]{2,60}?\s*\d{5}\s+[A-ZÉÈÀÂÎÔÛ][A-Za-zÀ-ÿœæ'’\-]*"
+                         r"(?:[ ][A-Za-zÀ-ÿœæ'’\-]+){0,3}"
                          # no postcode: up to a comma, a sentence end ("Lyon. Témoin", but
                          # "St. Jacques" goes on) or a label ("Témoin :")
                          r"|(?:(?![ ]{2})(?!(?<=[a-zà-ÿ]{3})\.\s+[A-ZÀ-Ý])(?!\s*:)[^\n,;]){2,50})", re.I)),
@@ -53,8 +53,8 @@ RULES = [
                          r"[ÉE]tage|Lot(?:issement)?\.?)\s+[A-Z0-9][\w'’-]*(?:[ ][A-Z][\w'’-]*)*"
                          r"(?:,\s*(?:appartement|appt\.?|[ée]tage|escalier|porte)\s+[\w-]+)*")),
     # Postcode + city on its own: survives PDF column layout that splits the address.
-    ("ADDR",  re.compile(r"\b\d{5}\s+[A-ZÉÈÀÂÎÔÛ][A-Za-zÀ-ÿ'’\-]*"
-                         r"(?:[ ][A-Za-zÀ-ÿ0-9'’\-]+){0,3}(?:\s+CEDEX\s*\d*)?", re.I)),
+    ("ADDR",  re.compile(r"\b\d{5}\s+[A-ZÉÈÀÂÎÔÛ][A-Za-zÀ-ÿœæ'’\-]*"
+                         r"(?:[ ][A-Za-zÀ-ÿœæ0-9'’\-]+){0,3}(?:\s+CEDEX\s*\d*)?", re.I)),
 ]
 
 DATE = (r"\d{2}/\d{2}/(?:19|20)\d{2}"
