@@ -6,3 +6,4 @@
 - Fonts: Momo Trust Sans and Atkinson Hyperlegible Mono (SIL Open Font License), via Fontsource.
 - Document reading: lxml (BSD), pypdf (BSD), olefile (BSD-2, Philippe Lagadec), xlrd (BSD), striprtf (BSD-3), python-docx (MIT). `.doc`, `.ppt`, `.msg` and `.p7m` are read by code written from Microsoft's published specifications ([MS-DOC], [MS-PPT], [MS-OXMSG]) and RFC 5652.
 - Test documents in `bench/synth/` are fictional.
+- Icon (`docs/icon.png`, `extension/chrome/icon128.png`): based on the "masks-theater" icon of Font Awesome Free by Fonticons, Inc., [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).

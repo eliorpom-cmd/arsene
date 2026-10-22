@@ -1,3 +1,5 @@
+<img src="docs/icon.png" width="128" height="128" alt="Arsène icon: two theatre masks">
+
 # Arsène
 
 A Chrome extension that pseudonymises the French text you paste into ChatGPT and Claude, on your Mac, before it leaves.
