@@ -1,0 +1,58 @@
+{
+  "manifest_version": 3,
+  "name": "Arsène",
+  "version": "0.1.0",
+  "description": "Les vrais noms restent sur votre Mac : l'IA reçoit des doublures, vous lisez les vrais.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2DUHL6xDU8eVCZyc70G5qmxKV7oFWzzq1e74K5ZsFtBB+jwZWfsBvxHGBtkLYW5ilmrsHDJdMMWrDu+JUd3yTwV9RQaLUZk/NYZpL4euAGTSOzNs+WITN4iwo8vPIBBfPbmijy8aUdRDtK/Ax2CI1ZP+TdaAwhKlEadAVUaohYvdluvpZFPwF/OISAQQq+23vl2q4RQohUHb8y6wYtp9BdIhJ2onwRNT1t6A1x0YVm1yLCBcHwJV6jq/DcB8ONwi6ExRuKW5A8OlSX9KBAgtJthfL96ExtpWCnAt9lxtQsqQMCz81E534lNersDV52HXUC8GlP3SDLoSIHoU/P+ogQIDAQAB",
+  "permissions": [
+    "nativeMessaging",
+    "activeTab",
+    "storage",
+    "downloads"
+  ],
+  "host_permissions": [
+    "https://chatgpt.com/*",
+    "https://claude.ai/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://claude.ai/*"
+      ],
+      "js": [
+        "peeps.js",
+        "content.js"
+      ],
+      "run_at": "document_start",
+      "exclude_matches": [
+        "https://claude.ai/code*"
+      ]
+    }
+  ],
+  "icons": {
+    "128": "icon128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "fonts/*.woff2"
+      ],
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://claude.ai/*"
+      ],
+      "use_dynamic_url": true
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Arsène",
+    "default_icon": {
+      "128": "icon128.png"
+    }
+  }
+}

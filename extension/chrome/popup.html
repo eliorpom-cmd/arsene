@@ -1,0 +1,82 @@
+<!doctype html>
+<!-- Toolbar popup (Figma « Extension » 95:91, 96:146, 97:201), redrawn on 30/09: one 16 px gutter for
+     every row, the state first, the people of the conversation with their character on the left. -->
+<html lang="fr"><head><meta charset="utf-8">
+<style>
+  @font-face { font-family: "Momo Trust Sans"; src: url(fonts/momo-trust-sans-latin-wght-normal.woff2) format("woff2"); font-weight: 200 800; }
+  @font-face { font-family: "Momo Trust Sans"; src: url(fonts/momo-trust-sans-latin-ext-wght-normal.woff2) format("woff2"); font-weight: 200 800; unicode-range: U+0100-024F, U+1E00-1EFF; }
+  @font-face { font-family: "Atkinson Hyperlegible Mono"; src: url(fonts/atkinson-hyperlegible-mono-latin-wght-normal.woff2) format("woff2"); font-weight: 200 800; }
+  :root { --page: #F3F3EF; --surface: #FBFBF8; --surface-2: #E9E9E4; --line: #DDDDD6; --ink: #16181D; --ink-2: #555A63; --ink-3: #8C9098;
+          --ok: #00AA93; --leak: #F15060; --real: #FFB511; --double: #0078BF; --knob: #FBFBF8; color-scheme: light; }
+  @media (prefers-color-scheme: dark) {
+    :root { --page: #111216; --surface: #1A1C21; --surface-2: #23262C; --line: #2E3138; --ink: #F3F3EF; --ink-2: #A7ABB2; --ink-3: #6E737B;
+            --ok: #2CC2AB; --leak: #F36B79; --double: #3A9BD9; --knob: #A7ABB2; color-scheme: dark; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; width: 340px; background: var(--surface); color: var(--ink); font: 400 14px/1.5 "Momo Trust Sans", -apple-system, system-ui, sans-serif;
+         -webkit-font-smoothing: antialiased; }
+  p { margin: 0; }
+  button { font: inherit; color: inherit; }
+  [hidden] { display: none !important; }
+  /* one gutter for every row: 16 px */
+  header { display: flex; align-items: center; justify-content: space-between; height: 52px; padding: 0 16px; border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; letter-spacing: -0.02em; }
+  .logo { width: 20px; height: 15.671px; flex: none; }
+  .badge { display: flex; align-items: center; gap: 8px; height: 24px; padding: 0 10px 0 8px; border-radius: 999px; background: var(--surface-2);
+           font-size: 12px; font-weight: 600; line-height: 1.35; white-space: nowrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; }
+  .state { display: flex; flex-direction: column; gap: 4px; padding: 20px 16px; }
+  .title { font-size: 18px; font-weight: 600; line-height: 1.25; letter-spacing: -0.01em; }
+  .count, .hint { color: var(--ink-2); }
+  .stopped { display: inline-flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 600; line-height: 1.25; letter-spacing: -0.01em; }
+  .stopped .dot { background: var(--leak); }
+  .stopped.starting .dot { background: var(--ink-3); }
+  #thread { border-top: 1px solid var(--line); padding: 12px 0 8px; }
+  .section { padding: 0 16px 4px; font-size: 12px; font-weight: 600; line-height: 1.35; color: var(--ink-3); }
+  .people { max-height: 240px; overflow-y: auto; }
+  .row { display: flex; align-items: center; gap: 12px; padding: 8px 16px; }
+  .disc { width: 32px; height: 32px; border-radius: 50%; overflow: hidden; background: var(--real); flex: none; }
+  .disc svg { width: 100%; height: 100%; display: block; }
+  .names { display: flex; flex-direction: column; flex: 1 0 0; min-width: 1px; overflow: hidden; white-space: nowrap; }
+  .names b { font-size: 14px; font-weight: 600; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; }
+  .names span { font-size: 12px; font-weight: 500; line-height: 1.35; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; }
+  .times { font: 500 12px/1.35 "Atkinson Hyperlegible Mono", ui-monospace, monospace; color: var(--ink-3); white-space: nowrap; }
+  #tools { border-top: 1px solid var(--line); }
+  .switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; height: 48px; padding: 0 16px; margin: 0; border: 0;
+            background: none; text-align: left; cursor: pointer; transition: background-color 180ms ease-out; }
+  .switch:hover { background: var(--page); }
+  /* track 36×20; on = blue: the doubles are on screen */
+  .track { position: relative; width: 36px; height: 20px; border-radius: 10px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); flex: none;
+           transition: background-color 180ms ease-out, box-shadow 180ms ease-out; }
+  .track::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--knob);
+                  box-shadow: 0 1px 2px rgba(20,20,30,.25); transition: transform 180ms ease-out, background-color 180ms ease-out; }
+  .switch[aria-checked="true"] .track { background: var(--double); box-shadow: none; }
+  .switch[aria-checked="true"] .track::after { transform: translateX(16px); background: #FBFBF8; }
+  .foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px 16px; }
+  .foot.alone { padding-top: 16px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 16px; border: 0; border-radius: 999px;
+         background: var(--surface-2); color: var(--ink); font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;
+         transition: opacity 180ms ease-out; }
+  .btn:hover { opacity: .9; } .btn:active { opacity: .8; }
+  .btn.main { padding: 0 22px; background: var(--ink); color: var(--page); }
+  .link { height: 36px; padding: 0; border: 0; background: none; color: var(--ink-2); font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+  .link:hover { color: var(--ink); text-decoration: underline 1px; text-underline-offset: 3px; }
+  button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+</style></head><body>
+<header data-figma="en-tete"><span class="brand"><svg class="logo" viewBox="0 0 541 384.582" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" d="M185.414 323.031C166.428 326.377 148.013 325.907 130.169 321.619C112.324 317.332 96.1761 310.129 81.7246 300.012C67.2732 289.894 54.981 277.185 44.8481 261.886C34.7228 246.578 27.9791 229.428 24.6168 210.434L0.510568 73.7319C-0.962336 65.3803 0.753478 57.7073 5.65802 50.713C10.5626 43.7186 17.1868 39.4811 25.5306 38.0005L238.172 0.51088C246.532 -0.962024 254.212 0.74994 261.215 5.64677C268.217 10.5513 272.446 17.1794 273.904 25.531L278.889 53.7436C273.923 55.5867 269.238 58.3513 264.835 62.0374C254.856 70.3967 249.304 81.0309 248.178 93.94L236.079 232.227C234.213 253.681 236.549 274.174 243.089 293.707C243.513 294.972 243.948 296.229 244.396 297.478C241.959 299.314 239.449 301.087 236.865 302.799C221.566 312.948 204.415 319.691 185.414 323.031ZM209.104 225.275C218.62 213.415 223.224 199.943 222.915 184.859C222.977 182.245 222.032 180.194 220.081 178.705C218.122 177.225 215.747 176.731 212.956 177.225L109.671 195.432C107.142 195.879 105.148 197.144 103.691 199.226C102.226 201.315 101.971 203.579 102.927 206.016C107.793 220.297 116.727 231.383 129.729 239.272C142.731 247.161 156.831 249.763 172.031 247.08C187.23 244.404 199.588 237.136 209.104 225.275ZM173.858 96.4154C169.378 101.382 166.66 107.08 165.703 113.512C165.341 115.926 166.089 117.95 167.947 119.585C169.798 121.22 172.115 121.786 174.899 121.285L217.432 113.79C219.962 113.342 221.82 112.039 223.008 109.88C224.195 107.721 224.334 105.538 223.424 103.333C220.324 97.6184 215.824 93.192 209.925 90.0534C204.026 86.9225 197.656 85.9586 190.816 87.1616C183.968 88.3723 178.316 91.4569 173.858 96.4154ZM82.7194 112.482C78.239 117.449 75.5207 123.147 74.5645 129.579C74.2097 131.993 74.9616 134.017 76.8201 135.652C78.6709 137.287 80.9882 137.857 83.772 137.364L126.293 129.856C128.831 129.409 130.689 128.106 131.869 125.947C133.056 123.788 133.195 121.609 132.285 119.411C129.193 113.689 124.697 109.259 118.798 106.12C112.899 102.99 106.525 102.026 99.6771 103.229C92.8292 104.439 87.1767 107.524 82.7194 112.482Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M378.391 384.014C359.182 382.332 341.514 377.112 325.39 368.351C309.257 359.591 295.523 348.456 284.187 334.945C272.851 321.434 264.268 305.973 258.438 288.56C252.616 271.155 250.538 252.844 252.203 233.627L264.303 95.3514C265.043 86.8995 268.687 79.9322 275.234 74.4493C281.789 68.9664 289.284 66.5873 297.721 67.3122L512.826 86.1322C521.278 86.8726 528.249 90.5163 533.74 97.0633C539.238 103.61 541.613 111.106 540.865 119.55L528.766 257.826C527.085 277.035 521.864 294.71 513.104 310.85C504.344 326.991 493.208 340.721 479.697 352.041C466.187 363.37 450.729 371.953 433.324 377.79C415.919 383.628 397.608 385.702 378.391 384.014ZM426.569 295.72C438.83 286.729 446.765 274.907 450.374 260.255C451.107 257.741 450.721 255.516 449.218 253.581C447.714 251.637 445.551 250.542 442.728 250.295L338.252 241.157C335.692 240.934 333.437 241.639 331.486 243.274C329.535 244.909 328.702 247.03 328.987 249.636C329.997 264.689 335.762 277.71 346.28 288.699C356.791 299.68 369.735 305.842 385.112 307.183C400.488 308.533 414.307 304.712 426.569 295.72ZM333.683 154.055C328.069 157.695 323.971 162.5 321.387 168.468C320.416 170.705 320.616 172.852 321.989 174.911C323.354 176.97 325.444 178.119 328.258 178.358L371.277 182.118C373.837 182.341 375.97 181.563 377.674 179.781C379.378 178 380.076 175.929 379.767 173.57C378.256 167.246 375.06 161.806 370.178 157.248C365.289 152.698 359.382 150.119 352.457 149.51C345.532 148.908 339.274 150.423 333.683 154.055ZM425.875 162.129C420.261 165.762 416.158 170.562 413.567 176.531C412.603 178.767 412.804 180.915 414.169 182.974C415.534 185.04 417.627 186.189 420.45 186.421L463.469 190.192C466.029 190.415 468.161 189.637 469.865 187.855C471.569 186.074 472.267 184.003 471.959 181.644C470.447 175.312 467.247 169.872 462.358 165.322C457.477 160.765 451.573 158.181 444.648 157.572C437.724 156.97 431.466 158.49 425.875 162.129Z" fill="currentColor"/></svg> Arsène</span><span class="badge" id="badge" data-figma="badge"><span class="dot"></span>Sur votre Mac</span></header>
+<section class="state" data-figma="etat">
+  <div id="status"><p class="title" id="label" data-figma="statut-texte">Protection active</p></div>
+  <p class="count" id="count" data-figma="compteur"></p>
+  <div id="stopped" hidden><span class="stopped"><span class="dot"></span><span id="why">Arsène est arrêté</span></span></div>
+  <p class="hint" id="hint" hidden>Pour le relancer :</p>
+</section>
+<div id="thread" hidden>
+  <p class="section">Dans cette conversation</p>
+  <div class="people" id="people" data-figma="personnes"></div>
+</div>
+<div id="tools">
+  <button class="switch" id="aiView" data-figma="interrupteur" role="switch" aria-checked="false">Voir ce que l'IA a lu<span class="track"></span></button>
+  <div class="foot" id="foot"><button class="btn" id="toggle" data-figma="lien">Pause sur ce site</button></div>
+</div>
+<script src="popup.js"></script>
+</body></html>

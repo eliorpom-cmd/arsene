@@ -1,0 +1,5 @@
+-r requirements.txt
+# test fixtures only (tests/formatsgen.py)
+python-pptx
+openpyxl
+reportlab
