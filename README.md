@@ -29,7 +29,16 @@ Read this before you rely on it.
 
 ## Install
 
-You need macOS and either [uv](https://docs.astral.sh/uv/) (`brew install uv`) or Python 3.10 to 3.13.
+With [Homebrew](https://brew.sh):
+
+```sh
+brew install eliorpom-cmd/tap/arsene
+arsene-setup
+```
+
+Then follow the Chrome steps below. Run `arsene-setup` again after each `brew upgrade arsene`.
+
+Without Homebrew, you need macOS and either [uv](https://docs.astral.sh/uv/) (`brew install uv`) or Python 3.10 to 3.13.
 
 ```sh
 git clone https://github.com/eliorpom-cmd/arsene.git
